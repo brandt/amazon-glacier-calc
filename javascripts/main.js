@@ -2,7 +2,34 @@
  * Angular Controller for the calculator
  */
 function GlacierCalculatorCtrl($scope) {
+  // Multiplier for each unit value (default is GB)
+  $scope.units = [
+    {name:'GB', value:'1'},
+    {name:'TB', value:'1024'},
+    {name:'PB', value:'1048576'}
+  ];
+  
+  // Default units
+  $scope.storedDataUnits = $scope.units[0].value;   // Default: GB
+  $scope.retrieveDataUnits = $scope.units[0].value; // Default: GB
+  $scope.deletedDataUnits = $scope.units[0].value;  // Default: GB
+  
+  // Default values for the showMore disclosure pane
+  $scope.showMore= {
+       "RETRIEVAL": 0.0,
+       "ASSUMPTIONS": 0.0
+  };
+    
   $scope.calculate = function() {
+    // Apply unit multiplier to user submitted value to homogenize input as GB
+    $scope.storedData = ( $scope.storedDataInput * $scope.storedDataUnits )
+    $scope.deletedData = ( $scope.deletedDataInput * $scope.deletedDataUnits )
+    $scope.retrieveData = ( $scope.retrieveDataInput * $scope.retrieveDataUnits )
+    
+    // Perform calculations, get results
+    $scope.rateAllowance = glacierCalculator.rateAllowance($scope);
+    $scope.dailyAllowance = glacierCalculator.dailyAllowance($scope);
+    $scope.monthlyAllowance = glacierCalculator.monthlyAllowance($scope);
     $scope.storageCost = glacierCalculator.storageCost($scope);
     $scope.retrievalCost = glacierCalculator.retrievalCost($scope);
     $scope.deletionCost = glacierCalculator.deletionCost($scope);
@@ -14,12 +41,44 @@ function GlacierCalculatorCtrl($scope) {
   };
 }
 
+
 /**
  * Glacier calculator
  */
 var glacierCalculator = (function() {
 
+  /**
+   * We assume it takes 4 hours for Amazon to fulfill our request
+   *
+   * Per Colin@AWS's statement here: https://forums.aws.amazon.com/thread.jspa?threadID=102485&tstart=0
+   */
   var retrieveJobHours = 4;
+
+  
+  /**
+   * Converts GB into whichever unit fits best for human consumption
+   *
+   * @private
+   * @param {Float} gigabytes - a size value in GB
+   * @return {String}
+   */
+  var humanSize = function(gigabytes) {
+    var quant = {
+      PB: 1048576,
+      TB: 1024,
+      GB: 1,
+      MB: 1/1024,
+      KB: 1/1048576
+    };
+    for (var i in quant) {
+      var unit = i;
+      var value = quant[i];
+      if (gigabytes >= value) {
+          return (gigabytes / value).toFixed(2) + ' ' + unit;
+      }
+    }
+  };
+  
 
   /**
    * Returns the storage rate for the region
@@ -38,6 +97,7 @@ var glacierCalculator = (function() {
     default: return 0.01;
     }
   }
+
 
   /**
    * Returns the transfer rate for the region
@@ -69,6 +129,7 @@ var glacierCalculator = (function() {
     }
   }
 
+
   /**
    * Returns the deletion rate for the region
    *
@@ -86,6 +147,7 @@ var glacierCalculator = (function() {
     default: return 0.01;
     }
   }
+
 
   /**
    * Returns the retrieval rate for the region
@@ -105,6 +167,7 @@ var glacierCalculator = (function() {
     }
   }
 
+
   /**
    * Returns the peak hourly retrieval rate in GB
    *
@@ -119,6 +182,7 @@ var glacierCalculator = (function() {
       return 0;
     }
   }
+
 
   /**
    * Returns the free hourly retrieval rate in GB
@@ -135,6 +199,7 @@ var glacierCalculator = (function() {
     }
   }
 
+
   /**
    * Returns the total transfer rate for the tier
    *
@@ -147,6 +212,7 @@ var glacierCalculator = (function() {
   function rateForTier(scope, data, tier) {
     return regionTransferRate(scope, tier) * data;
   }
+
 
   /**
    * Returns the total data for the tier
@@ -165,7 +231,56 @@ var glacierCalculator = (function() {
   }
 
 
-  var cost = {};
+
+  var estimate = {};
+
+  /**
+   * Returns the monthly free retrieval allowance, prorated to the day in GB
+   *
+   * @private
+   * @param {Object} scope - The Angular scope object
+   * @return {Float}
+   */
+   estimate.dailyAllowance = function(scope) {
+    if (typeof scope.storedData != 'undefined') {
+      return humanSize((scope.storedData * 0.05) / 30);
+    } else {
+      return 0;
+    }
+  }
+
+
+  /**
+   * Returns the monthly free retrieval allowance in GB
+   *
+   * @private
+   * @param {Object} scope - The Angular scope object
+   * @return {Float}
+   */
+  estimate.monthlyAllowance = function(scope) {
+    if (typeof scope.storedData != 'undefined') {
+      return humanSize(scope.storedData * 0.05);
+    } else {
+      return 0;
+    }
+  }
+
+
+  /**
+   * Returns the free hourly retrieval rate in GB/hour
+   *
+   * @private
+   * @param {Object} scope - The Angular scope object
+   * @return {Float}
+   */
+  estimate.rateAllowance = function(scope) {
+    if (typeof scope.storedData != 'undefined') {
+      return humanSize(freeHourlyRetrieval(scope));
+    } else {
+      return 0
+    }
+  }
+
 
   /**
    * Calculates the storage cost based on the region.
@@ -174,7 +289,7 @@ var glacierCalculator = (function() {
    * @param {Object} scope - The Angular scope object
    * @return {Float}
    */
-  cost.storageCost = function(scope) {
+  estimate.storageCost = function(scope) {
     if (typeof scope.storedData != 'undefined' && typeof scope.storedDuration != 'undefined') {
       var durationInMonth = scope.storedDuration / 30;
       return regionStorageRate(scope) * scope.storedData * durationInMonth;
@@ -183,6 +298,7 @@ var glacierCalculator = (function() {
     }
   };
 
+
   /**
    * Calculates the retrieval cost based on the region
    *
@@ -190,7 +306,7 @@ var glacierCalculator = (function() {
    * @param {Object} scope - The Angular scope object
    * @return {Float}
    */
-  cost.retrievalCost = function(scope) {
+  estimate.retrievalCost = function(scope) {
     if (typeof scope.retrieveData != 'undefined') {
       console.log(peakHourlyRetrieval(scope));
       console.log(freeHourlyRetrieval(scope));
@@ -205,6 +321,7 @@ var glacierCalculator = (function() {
     }
   };
 
+
   /**
    * Calculates the deletion cost based on the region
    *
@@ -212,7 +329,7 @@ var glacierCalculator = (function() {
    * @param {Object} scope - The Angular scope object
    * @return {Float}
    */
-  cost.deletionCost = function(scope) {
+  estimate.deletionCost = function(scope) {
     if (typeof scope.deletedData != 'undefined' && typeof scope.deletedDuration != 'undefined') {
       if (scope.deletedDuration < 30) {
 	return scope.deletedData * regionDeletionRate(scope) * 3;
@@ -228,6 +345,7 @@ var glacierCalculator = (function() {
     }
   };
 
+
   /**
    * Calculates the transfer cost based on the region
    *
@@ -235,7 +353,7 @@ var glacierCalculator = (function() {
    * @param {Object} scope - The Angular scope object
    * @return {Float}
    */
-  cost.transferCost = function(scope) {
+  estimate.transferCost = function(scope) {
     if (typeof scope.retrieveData != 'undefined') {
       var currentData = scope.retrieveData - 1;
       var tenTBTierData = dataForTier(currentData, 10000);
@@ -249,14 +367,15 @@ var glacierCalculator = (function() {
       var maxTierData = currentData;
 
       return rateForTier(scope, tenTBTierData, '10tb') +
-	rateForTier(scope, fortyTBTierData, '40tb') +
-	rateForTier(scope, hundredTBTierData, '100tb') +
-	rateForTier(scope, threeFiftyTBTierData, '350tb') +
-	rateForTier(scope, maxTierData, 'max');
+            	rateForTier(scope, fortyTBTierData, '40tb') +
+            	rateForTier(scope, hundredTBTierData, '100tb') +
+            	rateForTier(scope, threeFiftyTBTierData, '350tb') +
+            	rateForTier(scope, maxTierData, 'max');
     } else {
       return 0;
     }
   };
 
-  return cost;
+
+  return estimate;
 }());

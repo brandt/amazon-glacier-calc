@@ -7,102 +7,127 @@
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">  
     <!--[if lt IE 9]>
-	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-	<![endif]-->
+    	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  	<![endif]-->
   </head>
+  
   <body>
     <div class="wrapper">
       <header>
-        <h1>Unofficial Amazon AWS Glacier Calculator</h1>
-        <p>A single page angular js app for calculating the rates for AWS glacier</p>
-        <p class="view"><a href="https://github.com/liangzan/aws-glacier-calculator">View the Project on GitHub <small>liangzan/aws-glacier-calculator</small></a></p>
-        <ul>
-          <li><a href="https://github.com/liangzan/aws-glacier-calculator/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/liangzan/aws-glacier-calculator/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/liangzan/aws-glacier-calculator">View On <strong>GitHub</strong></a></li>
-        </ul>
+        <h1>Amazon Glacier Cost-Estimator</h1>
+        
+        <p>An unofficial, hacked-together cost-estimator for Amazon Glacier.</p>
+        
+        <p class="view"><a href="https://github.com/brandt/amazon-glacier-calc">View the Project on GitHub<br> 
+          <small>brandt/amazon-glacier-calc</small></a></p>
 
-	<h3>Assumptions</h3>
-	<p>
-	  <ol>
-	    <li>1 month equals 30 days</li>
-	    <li>Request costs are assumed to be zero</li>
-	    <li>Data transfer rate beyond 350TB is assumed to be the the same as the 350TB tier</li>
-	    <li>You are making 1 retrieval job request which takes 4 hours</li>
-	  </ol>
-	</p>
+      	<h3>Assumptions</h3>
+      	<p>
+      	  <ol>
+      	    <li>One month equals 30 days.</li>
+      	    <li>Request costs ($0.05 per 1000) are not included.</li>
+            <li>Amount of data stored is also the average amount for that month.</li>
+      	    <li>Data transfer rate beyond 350 TB is priced at the 350 TB tier.</li>
+      	    <li>You are making 1 retrieval job request that takes Amazon 4 hours to fulfull.</li>
+      	  </ol>
+      	</p>  
       </header>
 
       <section ng-controller="GlacierCalculatorCtrl">
-        <h3>Welcome to the unofficial Amazon AWS Glacier Calculator.</h3>
+        <h3>The Missing Amazon Glacier Cost-Estimator Calculator.</h3>
 
-	<p>
-	  This is a single page javascript app that helps you estimate the cost of <a href="http://aws.amazon.com/glacier/">AWS glacier</a>. It is not endorsed by <a href="http://aws.amazon.com">Amazon AWS</a>. The rates are referenced from the <a href="http://aws.amazon.com/glacier/pricing/">Glacier pricing page</a> as well as the <a href="http://aws.amazon.com/glacier/faqs/">Glacier FAQ</a>.  This page is built with <a href="http://angularjs.org/">Angluar JS</a> and hosted on <a href="http://pages.github.com/">Github pages</a>.
-	</p>
-	<p>
-	  Should you discover any mistakes, please let me know at <a href="https://twitter.com/liangzan">@liangzan</a> or my <a href="mailto:zan@liangzan.net">email</a>. Thanks!
-	</p>
+        <p>Amazon has&apos;t yet provided us with a cost calculator for their new archival storage service, <a href="http://aws.amazon.com/glacier/">Glacier</a>, and figuring out how their <a href="http://aws.amazon.com/glacier/faqs/">pricing model</a> translates to real-world use isn&apos;t exactly straightforward.</p>
 
-	<h3>Select your region</h3>
-	<p>
-	  <input type="radio" ng-model="region" value="us-east" ng-change="calculate()"/>US East (N. Virginia)<br/>
-	  <input type="radio" ng-model="region" value="us-west-1" ng-change="calculate()"/>US West (Oregon)<br/>
-	  <input type="radio" ng-model="region" value="us-west-2" ng-change="calculate()"/>US West (N. California)<br/>
-	  <input type="radio" ng-model="region" value="europe" ng-change="calculate()"/>EU (Ireland)<br/>
-	  <input type="radio" ng-model="region" value="asia" ng-change="calculate()"/>Asia (Tokyo)
-	</p>
+        <p>Sometimes the best way to understand something complicated is to interact with it.</p>
+        
+        <p>This tool helps elucidate the relationship between cost, data retention periods, and recovery scenarios. (See disclaimer below.)</p>
+  
+      	<h3>Select your region</h3>
+      	<p>
+      	  <input type="radio" ng-model="region" value="us-east" ng-change="calculate()"/>US East (N. Virginia)<br/>
+      	  <input type="radio" ng-model="region" value="us-west-1" ng-change="calculate()"/>US West (Oregon)<br/>
+      	  <input type="radio" ng-model="region" value="us-west-2" ng-change="calculate()"/>US West (N. California)<br/>
+      	  <input type="radio" ng-model="region" value="europe" ng-change="calculate()"/>EU (Ireland)<br/>
+      	  <input type="radio" ng-model="region" value="asia" ng-change="calculate()"/>Asia (Tokyo)
+      	</p>
 
-	<h3>Storage information</h3>
-	<p>
-	  <label>Amount of data stored (GB)</label><input type="text" ng-model="storedData" ng-change="calculate()"/><br/>
-	  <label>Duration that data was kept (days)</label><input type="text" ng-model="storedDuration" ng-change="calculate()"/>
-	</p>
+      	<h3>Storage</h3>
+      	<p>
+      	  <label>Amount of data stored</label><input type="text" ng-model="storedDataInput" ng-change="calculate()"/> 
+          <select ng-model="storedDataUnits" ng-options="u.value as u.name for u in units" ng-change="calculate()"></select><br>    
+      	  <label>Duration data was kept</label><input type="text" ng-model="storedDuration" ng-change="calculate()"/> days
+      	</p>
 
-	<h3>Retrieval information</h3>
-	<p>
-	  <label>Amount of data to retrieve (GB)</label><input type="text" ng-model="retrieveData" ng-change="calculate()"/><br/>
-	</p>
+      	<h3>Early deletion</h3>
+      	<p>
+      	  <label>Amount of data to be deleted</label><input type="text" ng-model="deletedDataInput" ng-change="calculate()"/> 
+          <select ng-model="deletedDataUnits" ng-options="u.value as u.name for u in units" ng-change="calculate()"></select><br>
+      	  <label>Duration data was kept</label><input type="text" ng-model="deletedDuration" ng-change="calculate()"/> days
+      	</p>
 
-	<h3>Early deletion information</h3>
-	<p>
-	  <label>Amount of data to be deleted (GB)</label><input type="text" ng-model="deletedData" ng-change="calculate()"/><br/>
-	  <label>Duration that data was kept (days)</label><input type="text" ng-model="deletedDuration" ng-change="calculate()"/>
-	</p>
-
-	<h3>Estimated cost breakdown</h3>
-	<p>
-	  <label>Storage Cost</label>{{ storageCost | currency }}<br/>
-	  <label>Retrieval Cost</label>{{ retrievalCost | currency }}<br/>
-	  <label>Deletion Cost</label>{{ deletionCost | currency }}<br/>
-	  <label>Transfer Cost</label>{{ transferCost | currency }}<br/>
-	  <span class="total-cost">
-	    <label>Total Cost</label>{{ totalCost | currency }}
-	  </span>
-	</p>
-
+      	<h3>Retrieval</h3>
+      	<p>
+      	  <label>Amount of data to be retrieved</label><input type="text" ng-model="retrieveDataInput" ng-change="calculate()"/>
+          <select ng-model="retrieveDataUnits" ng-options="u.value as u.name for u in units" ng-change="calculate()"></select>
+        </p>
+    
+        <h2>Results</h2>
+        <h3>Retrieval allowance</h3>
+        <p>
+          <label>Per Month</label>{{ monthlyAllowance }}<br/>
+          <label>Per Day</label>{{ dailyAllowance }}<br/>
+          <small>Target request rate to stay within allowance:</small><br/>
+          <label>Per Hour</label>{{ rateAllowance }}<br/>
+          <small><a ng-click="showMore.RETRIEVAL=0" ng-show="showMore.RETRIEVAL == 1"> Hide explanation...</a></small>
+          <small><a ng-click="showMore.RETRIEVAL=1" ng-show="showMore.RETRIEVAL == 0"> Show explanation...</a></small>
+        </p>
+        <span ng-show="showMore.RETRIEVAL">
+          <h4>Explanation of Retrieval Allowance (as I understand it)</h4>
+          <p>
+            <ul>
+              <li>Allowance is 5% of your average monthly storage.</li>
+              <li>Average is measured from the start of the month to the time of request.</li>
+              <li>Allowance is pro-rated per day (UTC) which translates to about 0.17%.</li>
+              <li>Hourly rate only matters if you exceed your daily allowance.</li>
+              <li>Retrieval time is how long it takes Amazon to fulfull your request.</li>
+              <li>Retrieval time has nothing to do with your download speed.</li>
+            </ul>
+          </p>
+        </span>
+        
+      	<h3>Costs</h3>
+      	<p>
+      	  <label>Storage Cost</label>{{ storageCost | currency }}<br/>
+      	  <label>Retrieval Cost</label>{{ retrievalCost | currency }}<br/>
+      	  <label>Deletion Cost</label>{{ deletionCost | currency }}<br/>
+      	  <label>Transfer Cost</label>{{ transferCost | currency }}<br/>
+      	  <span class="total-cost">
+      	    <label><b>Total Cost</b></label>{{ totalCost | currency }}
+        	 </span>
+      	</p>
+        
+        <p>Disclaimer: This tool was built on quite a few assumptions and estimations. I can&apos;t attest to its accuracy. It&apos;s neither endorsed nor affiliated with <a href="http://aws.amazon.com">Amazon AWS</a>. The rates are referenced from the <a href="http://aws.amazon.com/glacier/pricing/">Glacier pricing page</a> and <a href="http://aws.amazon.com/glacier/faqs/">Glacier FAQ</a>.</p>
+        
       </section>
+      
       <footer>
-        <p>This project is maintained by <a href="http://liangzan.net">liangzan</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+        <p>
+            This version wascreated by <a href="https://github.com/brandt">brandt</a><br/>
+            Based on original work by <a href="https://www.github.com/liangzan/aws-glacier-calculator">liangzan</a>
+        </p>
+        <p>
+          <small>
+            Built with <a href="http://angularjs.org">AngularJS</a><br>
+            Theme by <a href="https://github.com/orderedlist">orderedlist</a><br>
+            Hosted on <a href="http://pages.github.com/">Github pages</a>
+          </small>
+        </p>
       </footer>
     </div>
     <script src="javascripts/scale.fix.js"></script>
     <script src="javascripts/angular-1.0.1.min.js"></script>
     <script src="javascripts/main.js"></script>
-    <script type="text/javascript">
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-2672768-2']);
-      _gaq.push(['_setDomainName', 'liangzan.net']);
-      _gaq.push(['_trackPageview']);
-
-      (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
-
-    </script>
   </body>
 </html>
