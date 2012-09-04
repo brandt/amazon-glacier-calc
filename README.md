@@ -1,7 +1,11 @@
 # The Missing Amazon Glacier Cost-Estimator Calculator
 
+[Go to the calculator][8]
+
 ## What
 An unofficial, hacked-together cost-estimator for Amazon's new, archival storage service, [Glacier][5].
+
+The calculator is [hosted here][8].
 
 ## Why
 Amazon hasn't yet provided us with a cost calculator for  [Glacier][5], and figuring out how their [pricing model][6]  translates to real-world use isn't exactly straightforward.
@@ -29,3 +33,4 @@ This tool was built on quite a few assumptions and estimations. I can't attest t
 [5]: http://aws.amazon.com/glacier
 [6]: http://aws.amazon.com/glacier/pricing
 [7]: http://aws.amazon.com/glacier/faqs
+[8]: http://brandt.github.com/amazon-glacier-calc
